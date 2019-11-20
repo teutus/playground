@@ -1,0 +1,62 @@
+ssh_pub_key = File.readlines("./authorized_keys").first.strip
+
+
+Vagrant.configure("2") do |config|
+
+  config.vm.define "vm-demo1" do |s1|
+
+    s1.ssh.insert_key = false
+    s1.ssh.private_key_path = "/home/stefan/insecure_private_key"
+
+    s1.vm.provision 'shell', inline: 'mkdir -p /root/.ssh'
+    s1.vm.provision 'shell', inline: "echo #{ssh_pub_key} >> /home/vagrant/.ssh/authorized_keys", privileged: false
+
+    s1.vm.box = "bento/ubuntu-16.04"
+    s1.vm.network "private_network", ip: "192.168.36.11"
+    s1.vm.hostname = "my-ubuntu"
+
+    s1.vm.provision "ansible" do |ansible|
+      ansible.playbook = "playbooks/nginx-setup.yml"
+    end
+
+    s1.vm.provider "virtualbox" do |v|
+      v.memory = 2048
+      v.cpus = 2
+    end
+
+  end
+
+  config.vm.define "vm-demo2" do |s2|
+
+    s2.ssh.insert_key = false
+    s2.ssh.private_key_path = "/home/stefan/insecure_private_key"
+    s2.vm.provision 'shell', inline: 'mkdir -p /root/.ssh'
+    s2.vm.provision 'shell', inline: "echo #{ssh_pub_key} >> /home/core/.ssh/authorized_keys", privileged: false
+
+    s2.vm.box = "amam/coreos-stable"
+    s2.vm.network "private_network", ip: "192.168.36.12"
+    s2.vm.hostname = "my-coreos"
+
+    s2.vm.provider "virtualbox" do |v|
+      v.memory = 1024
+      v.cpus = 2
+    end
+
+  end
+
+  config.vm.define "vm-demo3" do |s3|
+    s3.vm.box = "StefanScherer/windows_10"
+    s3.vm.guest = "windows"
+    s3.vm.network "private_network", ip: "192.168.36.13"
+    s3.vm.hostname = "my-windows"
+
+    s3.vm.provision :shell, path: "windows-setup/ConfigureRemotingForAnsible.ps1"
+    s3.vm.provision :shell, path: "windows-setup/InstallChocolatey.ps1"
+
+    s3.vm.provider "virtualbox" do |v|
+      v.memory = 4096
+      v.cpus = 2
+    end
+
+  end
+end 
